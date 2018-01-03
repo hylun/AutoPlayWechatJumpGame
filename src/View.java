@@ -26,6 +26,7 @@ public class View extends JFrame {
         super("跳一跳机器人");
         setSize(220, 220);
         setResizable(false);
+        setLocationRelativeTo(null);
 
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         FlowLayout layout = new FlowLayout(FlowLayout.CENTER,0,10);

@@ -77,7 +77,7 @@ public class Jump {
         double distance = Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
         if(x1<50 || y1<50 || x2<50 || y2<50 || distance<100){
             if(!restart || error>2) throw new Exception("scan error:"+x1+"|"+y1+"|"+x2+"|"+y2);
-            int i = 1,j = 1;
+            int i = 1,j = 1;//获取重新开始按钮位置，自动重新开始
             for (;i<width && j>0;i=i+20){
                 j = height-i;
                 if(bi.getRGB(i, j)==-1) break;
