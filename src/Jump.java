@@ -3,6 +3,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.Random;
 
 /**
@@ -12,7 +13,7 @@ import java.util.Random;
 public class Jump {
 
     private static String adb = "";
-    private static float rate = 1.35f;
+    private static float rate = 1.37f;
     private static boolean running = false;
     private static boolean restart = true;
     private static int step = 0;
@@ -109,30 +110,29 @@ public class Jump {
         //获取图像的宽度和高度
         int width = bi.getWidth();
         int height = bi.getHeight();
-        int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        int x1 = 0, y1 = 0, x2 = 0, y2 = 0,r = width/1080;
         //扫描获取黑棋位置
         for (int i = 50; i < width; i++) {
-            for (int flag = 0, j = height * 3 / 4; j > height / 3; j = j - 5) {
-                int[] p = getRGB(bi, i, j);
-                if (p[0] > 50 && p[0] < 60 && p[1] > 53 && p[1] < 63 && p[2] > 95 && p[2] < 105) {
-                    flag++;
-                }
+            for (int flag = 0, j = height * 3 / 4; j > height / 3; j -= 5) {
+                if (!colorDiff(bi.getRGB(i,j),55<<16|58<<8|100)) flag++;
                 if (flag > 3) {
-                    x1 = i + 8*width/1080;
-                    y1 = j;
+                    x1 = i + 13*r;
+                    y1 = j + 2*r;
                     break;
                 }
             }
             if (x1 > 0) break;
         }
+        Graphics2D g2d = bi.createGraphics();
+        g2d.setColor(Color.BLUE);
+        g2d.setStroke(new BasicStroke(3f));
         //扫描目标点
-        for (int i = height / 3; i < height * 3 / 4; i++) {
-            int[] p1 = getRGB(bi, 99, i);
+        for (int i = height / 3; i < y1; i++) {
+            int p1 = bi.getRGB(99, i);
             for (int j = 100; j < width; j++) {
-                int[] p = getRGB(bi, j, i);
-                if (Math.abs(p1[0] - p[0])>5 || Math.abs(p1[1] - p[1])>5 || Math.abs(p1[2] - p[2])>5) {
-                    if(Math.abs(j-x1)<50*width/1080) {//黑棋比图高
-                        j = j + 50*width/1080;
+                if (colorDiff(bi.getRGB(j,i),p1)) {
+                    if(Math.abs(j-x1)<50*r) {//黑棋比图高
+                        j = j + 50*r;
                     }else {
                         x2 = j;
                         y2 = i;
@@ -140,17 +140,22 @@ public class Jump {
                     }
                 }
             }
-            if (y2 > 0) {
-                int[] p2 = getRGB(bi, x2, y2 + 5);
-                for (i = i + 50; (i += 5) < height * 3 / 4; ) {
-                    int[] p = getRGB(bi, x2, i);
-                    if(p[0]<240 && Math.abs(p[0]-p2[0])>5 && Math.abs(p[1]-p2[1])>5 && Math.abs(p[2]-p2[2])> 5) {
-                        y2 += (i - y2) / 2; break;
-                    }
+            if (x2 > 0) {//找到了目标块顶点
+                int p2 = bi.getRGB(x2, y2 - 10),j,max = -1;
+                for (; i < y1-50*r;i += 5 ) {
+                    for (j = x2; colorDiff(bi.getRGB(j,i),p2) && j<x2+200*r;) j++;
+                    if(max < 0 && j-x2>0) x2 = x2 + (j-x2)/2;//修正顶点横坐标
+                    if(max < j - x2) max = j - x2;//找到目标块最长宽度
+                    else break;
                 }
+                g2d.drawLine(x2,y2,x2,i);
+                y2 = i - 5;
+                g2d.drawLine(x2-max,y2,x2+max,y2);
                 break;
             }
         }
+        g2d.drawLine(x1,y1,x2,y2);
+        ImageIO.write(bi, "png", new FileOutputStream(pic));//保存成图片
         double distance = Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
         if (x1 < 50 || y1 < 50 || x2 < 50 || y2 < 50 || distance < 100) {
             if (!restart) throw new Exception("scan error:" + x1 + "|" + y1 + "|" + x2 + "|" + y2);
@@ -159,23 +164,20 @@ public class Jump {
             if (i == y-20 || i == z) throw new Exception("scan error:game not start");
             return x + " " + i + " " + x  + " " + i + " 100";
         }
-        if (distance < 200) distance = 200;
+        if (distance < 150) distance = 150;
         return x1 + " " + y1 + " " + x2 + " " + y2 + " " + (int) (distance * rate);
     }
 
-    private static int[] getRGB(BufferedImage bi, int x, int y) {
-        int rgb = bi.getRGB(x, y);
-        int[] res = new int[3];
-        res[0] = rgb >> 16 & 0xFF;
-        res[1] = rgb >> 8 & 0xFF;
-        res[2] = rgb & 0xFF;
-        return res;
+    private static boolean colorDiff(int c1, int c2){
+        int c11 = c1 >> 16 & 0xFF,c12 = c1 >> 8 & 0xFF,c13 = c1 & 0xFF;
+        int c21 = c2 >> 16 & 0xFF,c22 = c2 >> 8 & 0xFF,c23 = c2 & 0xFF;
+        return Math.abs(c11 - c21) > 5 || Math.abs(c12 - c22) > 5 || Math.abs(c13 - c23) > 5;
     }
 
     private static File getScreenPic() throws Exception {
         File pic = new File(path + "pic.png");
         if (pic.exists()) {//备份一下之前的一张图片
-            File back = new File(path + "back.png");
+            File back = new File(path + System.currentTimeMillis()+".png");
             if (!back.exists() || back.delete()) pic.renameTo(back);
         }
         exec(adb + " shell screencap -p /sdcard/screen.png");
